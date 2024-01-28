@@ -1,146 +1,79 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
 
 class Program
 {
     static void Main()
     {
-        // Create a list of scriptures by loading them from a file
-        scriptures = ("Proverbs 3:5 Trust in the Lord with all thine heart; and lean not unto thine own understanding.
+        // Create a scripture memorizer instance
+        var memorizer = new ScriptureMemorizer();
 
+        // Display the scripture and hide words until all are hidden
+        memorizer.StartMemorizing();
 
-Proverbs 3:5
-Old Testament
-Scriptures
-
-
-");
-
-        foreach (var scripture in scriptures)
-        {
-            DisplayScripture(scripture);
-
-            // Continue hiding words until all words are hidden
-            while (!scripture.AllWordsHidden)
-            {
-                Console.WriteLine("Press Enter to hide more words or type 'quit' to end:");
-                string input = Console.ReadLine();
-
-                if (input.ToLower() == "quit")
-                    return;
-
-                HideRandomWords(scripture);
-                Console.Clear();
-                DisplayScripture(scripture);
-            }
-        }
-
-        Console.WriteLine("All scriptures are now hidden. Press Enter to exit.");
+        Console.WriteLine("Press Enter to exit.");
         Console.ReadLine();
     }
+}
 
-    static void DisplayScripture(Scripture scripture)
+class ScriptureMemorizer
+{
+    private readonly Scripture _scripture;
+
+    public ScriptureMemorizer()
     {
-        Console.WriteLine($"Reference: {scripture.Reference}");
-        Console.WriteLine("Scripture:");
-        Console.WriteLine(scripture.GetVisibleText());
-        Console.WriteLine();
+        // You can initialize your scripture here
+        _scripture = new Scripture("John 3:16", "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.");
     }
 
-    static void HideRandomWords(Scripture scripture)
+    public void StartMemorizing()
     {
-        Random random = new Random();
-        int wordsToHide = random.Next(1, Math.Max(1, scripture.VisibleWordCount() / 2));
-
-        for (int i = 0; i < wordsToHide; i++)
+        do
         {
-            scripture.HideRandomWord();
-        }
-    }
+            Console.Clear();
+            _scripture.Display();
+            Console.WriteLine("\nPress Enter to continue or type 'quit' to exit.");
+            string input = Console.ReadLine().ToLower();
 
-    static List<Scripture> LoadScripturesFromFile(string filePath)
-    {
-        List<Scripture> scriptures = new List<Scripture>();
+            if (input == "quit")
+                break;
 
-        try
-        {
-            string[] lines = File.ReadAllLines(filePath);
+            _scripture.HideRandomWord();
+        } while (!_scripture.AllWordsHidden);
 
-            foreach (var line in lines)
-            {
-                string[] parts = line.Split('|');
-                string reference = parts[0];
-                string text = parts[1];
-                scriptures.Add(new Scripture(new Reference(reference), text));
-            }
-        }
-        catch (FileNotFoundException)
-        {
-            Console.WriteLine("Scripture file not found. Please make sure the file exists.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred while loading scriptures: {ex.Message}");
-        }
-
-        return scriptures;
+        Console.WriteLine("Congratulations! You have memorized the scripture.");
     }
 }
 
 class Scripture
 {
-    private Reference reference;
-    private List<Word> words;
+    private readonly string _reference;
+    private readonly List<Word> _words;
 
-    public bool AllWordsHidden => words.TrueForAll(word => word.IsHidden);
+    public bool AllWordsHidden => _words.All(word => word.IsHidden);
 
-    public string Reference => reference.ToString();
-
-    public Scripture(Reference reference, string text)
+    public Scripture(string reference, string text)
     {
-        this.reference = reference;
-        words = new List<Word>();
+        _reference = reference;
+        _words = text.Split(' ').Select(word => new Word(word)).ToList();
+    }
 
-        string[] textWords = text.Split(' ');
-
-        foreach (var word in textWords)
-        {
-            words.Add(new Word(word));
-        }
+    public void Display()
+    {
+        Console.WriteLine($"{_reference}: {string.Join(" ", _words.Select(word => word.IsHidden ? "_____" : word.Text))}");
     }
 
     public void HideRandomWord()
     {
-        Random random = new Random();
-        int index = random.Next(0, words.Count);
+        var random = new Random();
+        var visibleWords = _words.Where(word => !word.IsHidden).ToList();
 
-        words[index].Hide();
-    }
-
-    public string GetVisibleText()
-    {
-        return string.Join(" ", words.ConvertAll(word => word.IsHidden ? "___" : word.Text));
-    }
-
-    public int VisibleWordCount()
-    {
-        return words.Count(word => !word.IsHidden);
-    }
-}
-
-class Reference
-{
-    private string reference;
-
-    public Reference(string reference)
-    {
-        this.reference = reference;
-    }
-
-    public override string ToString()
-    {
-        return reference;
+        if (visibleWords.Any())
+        {
+            var wordToHide = visibleWords[random.Next(visibleWords.Count)];
+            wordToHide.Hide();
+        }
     }
 }
 
